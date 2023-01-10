@@ -1,1 +1,1 @@
-# kaggle_nlp_utils
+# NLPコンペ用のテンプレート
