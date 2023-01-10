@@ -274,7 +274,7 @@ class MixLinear(torch.nn.Module):
         )
 
 
-def replace_mixout(model):
+def replace_mixout(model, prob=0.2):
     for sup_module in model.modules():
         for name, module in sup_module.named_children():
             if isinstance(module, nn.Dropout):
@@ -287,7 +287,7 @@ def replace_mixout(model):
                     module.out_features,
                     bias,
                     target_state_dict["weight"],
-                    0.2,
+                    prob,
                 )
                 new_module.load_state_dict(target_state_dict)
                 setattr(sup_module, name, new_module)
