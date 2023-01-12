@@ -1,3 +1,3 @@
-from nlp.model import *
-from nlp.optimizer import *
-from nlp.preprocessing import *
+from .model import *
+from .optimizer import *
+from .preprocessing import *
