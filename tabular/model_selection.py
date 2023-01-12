@@ -3,8 +3,8 @@ import pickle
 
 import numpy as np
 
-from utils.utils import decorate
-from model import get_model, save_model, load_model
+from kagglib.utils.utils import decorate
+from kagglib.tabular.model import get_model, save_model, load_model
 
 
 def train_cv(cfg, train_feat_df, target_df, cv_list, metrics_dict, LOGGER):
