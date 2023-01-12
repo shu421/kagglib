@@ -8,7 +8,6 @@ import torch
 import numpy as np
 import pandas as pd
 
-from kaggle.api.kaggle_api_extended import KaggleApi
 
 
 class Timer:
@@ -173,6 +172,7 @@ def dataset_create_new(dataset_name, upload_dir):
     dataset_metadata["title"] = dataset_name
     with open(os.path.join(upload_dir, "dataset-metadata.json"), "w") as f:
         json.dump(dataset_metadata, f, indent=4)
+    from kaggle.api.kaggle_api_extended import KaggleApi
     api = KaggleApi()
     api.authenticate()
     api.dataset_create_new(folder=upload_dir, convert_to_csv=False, dir_mode="tar")
