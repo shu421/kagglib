@@ -60,6 +60,7 @@ class LabelEncodingBlock(AbstractBaseBlock):
     def transform(self, input_df: pd.DataFrame):
         output_df = input_df[self.cols].copy()
         output_df = self.oe.transform(output_df)
+        output_df = pd.DataFrame(output_df)
 
         return output_df
 
