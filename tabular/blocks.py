@@ -7,7 +7,7 @@ from sklearn.preprocessing import OrdinalEncoder
 from sklearn.decomposition import TruncatedSVD
 from category_encoders import CountEncoder
 
-from utils.utils import Timer, decorate, reduce_mem_usage
+from kagglib.utils.utils import Timer, decorate, reduce_mem_usage
 
 
 class AbstractBaseBlock:
