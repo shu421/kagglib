@@ -19,6 +19,10 @@ def freeze(module):
 
 
 class AttentionPooling(nn.Module):
+    """
+    Usage:
+        self.pool = AttentionPooling(self.config.hidden_size)
+    """
     def __init__(self, in_dim):
         super().__init__()
         self.attention = nn.Sequential(
@@ -67,6 +71,17 @@ class MeanPooling(nn.Module):
 
 
 class WeightedLayerPooling(nn.Module):
+    """
+    Usage:
+        def __init__():
+            self.weighted_layer_pool = WeightedLayerPooling(self.config.num_hidden_layers)
+        def feature(inputs):
+            outputs = self.model(**inputs)
+            all_layer_embeddings = outputs[1]
+            feature = self.weighted_layer_pool(all_layer_embeddings)
+            feature = self.pool(feature, inputs['attention_mask'])
+            return feature
+    """
     def __init__(self, num_hidden_layers, layer_start: int = 4, layer_weights=None):
         super(WeightedLayerPooling, self).__init__()
         self.layer_start = layer_start
