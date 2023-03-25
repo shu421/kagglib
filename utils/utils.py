@@ -8,6 +8,7 @@ import torch
 import numpy as np
 import pandas as pd
 
+from kaggle.api.kaggle_api_extended import KaggleApi
 
 
 class Timer:
@@ -147,19 +148,22 @@ def setup(cfg):
 
     if len(os.listdir(cfg.INPUT)) == 0:
         # load dataset
-        subprocess.call(
-            f"kaggle competitions download -c ${cfg.COMPETITION} -p ${cfg.INPUT}"
+        subprocess.run(
+            f"kaggle competitions download -c {cfg.COMPETITION} -p {cfg.INPUT}",
+            shell=True,
         )
         filepath = os.path.join(cfg.INPUT, cfg.COMPETITION + ".zip")
-        subprocess.call(f"unzip -d ${cfg.INPUT} ${filepath}")
+        subprocess.run(f"unzip -d {cfg.INPUT} {filepath}", shell=True)
 
     for path in cfg.DATASET_PATH:
         datasetpath = os.path.join(cfg.DATASET, path.split("/")[1])
         if not os.path.exists(datasetpath):
             os.makedirs(datasetpath, exist_ok=True)
-            subprocess.call(f"kaggle datasets download $path -p ${datasetpath}")
+            subprocess.run(
+                f"kaggle datasets download path -p {datasetpath}", shell=True
+            )
             filepath = os.path.join(datasetpath, path.split("/")[1] + ".zip")
-            subprocess.call(f"unzip -d ${datasetpath} ${filepath}")
+            subprocess.run(f"unzip -d {datasetpath} {filepath}", shell=True)
 
     seed_everything(cfg.seed)
     return cfg
@@ -172,7 +176,6 @@ def dataset_create_new(dataset_name, upload_dir):
     dataset_metadata["title"] = dataset_name
     with open(os.path.join(upload_dir, "dataset-metadata.json"), "w") as f:
         json.dump(dataset_metadata, f, indent=4)
-    from kaggle.api.kaggle_api_extended import KaggleApi
     api = KaggleApi()
     api.authenticate()
     api.dataset_create_new(folder=upload_dir, convert_to_csv=False, dir_mode="tar")
