@@ -8,18 +8,20 @@ class XGBoost:
     """xgboostのラッパー
     gbdt_model = "XGBoost"
     stopping_rounds = 50
-    log_evaluation = 500
+    log_evaluation = False
     model_params = {
         "objective": "binary:logistic",
-        # "eval_metric": fbeta_wrapper,
         "eval_metric": "logloss",
-        "learning_rate": 0.3,
         "tree_method": "gpu_hist",
         "random_state": seed,
-        "n_estimators": 99999,
-    }
+        "learning_rate": 0.05,
+        "max_depth": 4,
+        "subsample": 0.8,
+        "colsample_bytree": 0.4,
+        }
     train_params = {
-        "verbose": log_evaluation,
+        "num_boost_round": 99999,
+        "verbose_eval": log_evaluation,
     }
     """
 
@@ -29,26 +31,27 @@ class XGBoost:
         self.train_params = self.cfg.train_params
 
     def fit(self, X_train, y_train, X_valid, y_valid):
-        self.model = xgb.XGBClassifier(
-            **self.model_params,
+
+        dtrain = xgb.DMatrix(X_train, label=y_train)
+        dvalid = xgb.DMatrix(X_valid, label=y_valid)
+
+        self.model = xgb.train(
+            self.model_params,
+            dtrain,
+            evals=[(dtrain, "train"), (dvalid, "valid")],
             callbacks=[
                 xgb.callback.EarlyStopping(
-                    rounds=self.cfg.stopping_rounds,
+                    self.cfg.stopping_rounds,
                     save_best=True,
                     maximize=False,
-                ),
-                # xgb.callback.EvaluationMonitor(
-                #     period=cfg.log_evaluation
-                #     ),
+                )
             ],
-        )
-
-        self.model.fit(
-            X_train, y_train, eval_set=[(X_valid, y_valid)], **self.train_params
+            **self.train_params,
         )
 
     def predict(self, features):
-        return self.model.predict_proba(features)
+        dtest = xgb.DMatrix(features)
+        return self.model.predict(dtest)
 
 
 class LightGBM:
@@ -81,9 +84,10 @@ class LightGBM:
         self.train_params = self.cfg.train_params
 
     def fit(self, X_train, y_train, X_valid, y_valid):
-        d_train = lgb.Dataset(X_train, label=y_train)
 
+        d_train = lgb.Dataset(X_train, label=y_train)
         d_valid = lgb.Dataset(X_valid, label=y_valid)
+
         self.model = lgb.train(
             params=self.model_params,
             train_set=d_train,
@@ -100,7 +104,7 @@ class LightGBM:
         return self.model.predict(features)
 
 
-def get_model(gbdt_model, cfg):
+def get_model(cfg, gbdt_model):
     if gbdt_model == "LightGBM":
         model = LightGBM(cfg)
     elif gbdt_model == "XGBoost":
