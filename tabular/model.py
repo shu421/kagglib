@@ -112,7 +112,7 @@ def get_model(cfg, gbdt_model):
     return model
 
 
-def save_model(filepath, model):
+def save_model(model, filepath):
     with open(filepath, "wb") as f:
         pickle.dump(model, f)
 

@@ -3,12 +3,15 @@ import time
 import json
 import random
 import subprocess
+from pathlib import Path
 
 import torch
 import numpy as np
 import pandas as pd
 
-from kaggle.api.kaggle_api_extended import KaggleApi
+api_path = Path("/root/.kaggle/kaggle.json")
+if api_path.is_file():
+    from kaggle.api.kaggle_api_extended import KaggleApi
 
 
 class Timer:
