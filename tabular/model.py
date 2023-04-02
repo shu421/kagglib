@@ -2,9 +2,23 @@ import pickle
 
 import xgboost as xgb
 import lightgbm as lgb
+import catboost as cbt
 
 
-class XGBoost:
+class AbstractGBDT:
+    """GBDTの抽象クラス"""
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+
+    def fit(self, X_train, y_train, X_valid, y_valid):
+        raise NotImplementedError
+
+    def predict(self, features):
+        raise NotImplementedError
+
+
+class XGBoost(AbstractGBDT):
     """xgboostのラッパー
     gbdt_model = "XGBoost"
     stopping_rounds = 50
@@ -54,7 +68,7 @@ class XGBoost:
         return self.model.predict(dtest)
 
 
-class LightGBM:
+class LightGBM(AbstractGBDT):
     """lightgbmのラッパー
 
     gbdt_model = "LightGBM"
@@ -104,11 +118,53 @@ class LightGBM:
         return self.model.predict(features)
 
 
-def get_model(cfg, gbdt_model):
-    if gbdt_model == "LightGBM":
+class CatBoost(AbstractGBDT):
+    """catboostのラッパー
+
+    gbdt_model = "CatBoost"
+    model_params = {
+        "loss_function": "Logloss",
+        "eval_metric": "Logloss",
+        "task_type": "GPU",
+        "iterations": 100000,
+        "learning_rate": 0.05,
+        "depth": 4,
+        "l2_leaf_reg": 10,
+        "random_seed": seed,
+        "od_type": "Iter",
+        "od_wait": 100,
+        "verbose": 100,
+    }
+    """
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.model_params = self.cfg.model_params
+        self.train_params = self.cfg.train_params
+
+    def fit(self, X_train, y_train, X_valid, y_valid):
+
+        d_train = cbt.Pool(X_train, label=y_train)
+        d_valid = cbt.Pool(X_valid, label=y_valid)
+
+        self.model = cbt.train(
+            params=self.model_params,
+            dtrain=d_train,
+            evals=d_valid,
+            # **self.train_params,
+        )
+
+    def predict(self, features):
+        return self.model.predict(features)
+
+
+def get_model(cfg):
+    if cfg.gbdt_model == "LightGBM":
         model = LightGBM(cfg)
-    elif gbdt_model == "XGBoost":
+    elif cfg.gbdt_model == "XGBoost":
         model = XGBoost(cfg)
+    elif cfg.gbdt_model == "CatBoost":
+        model = CatBoost(cfg)
     return model
 
 
