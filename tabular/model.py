@@ -11,7 +11,7 @@ class AbstractGBDT:
     def __init__(self, cfg):
         self.cfg = cfg
 
-    def fit(self, X_train, y_train, X_valid, y_valid):
+    def fit(self, X_train, y_train, X_valid=None, y_valid=None):
         raise NotImplementedError
 
     def predict(self, features):
@@ -44,24 +44,40 @@ class XGBoost(AbstractGBDT):
         self.model_params = self.cfg.model_params
         self.train_params = self.cfg.train_params
 
-    def fit(self, X_train, y_train, X_valid, y_valid):
+    def fit(self, X_train, y_train, X_valid=None, y_valid=None):
 
-        dtrain = xgb.DMatrix(X_train, label=y_train)
-        dvalid = xgb.DMatrix(X_valid, label=y_valid)
+        # train mode
+        if len(X_valid) != 0:
+            self.train_mode = True
+            dtrain = xgb.DMatrix(X_train, label=y_train)
+            dvalid = xgb.DMatrix(X_valid, label=y_valid)
 
-        self.model = xgb.train(
-            self.model_params,
-            dtrain,
-            evals=[(dtrain, "train"), (dvalid, "valid")],
-            callbacks=[
-                xgb.callback.EarlyStopping(
-                    self.cfg.stopping_rounds,
-                    save_best=True,
-                    maximize=False,
-                )
-            ],
-            **self.train_params,
-        )
+            self.model = xgb.train(
+                self.model_params,
+                dtrain,
+                evals=[(dtrain, "train"), (dvalid, "valid")],
+                callbacks=[
+                    xgb.callback.EarlyStopping(
+                        self.cfg.stopping_rounds,
+                        save_best=True,
+                        maximize=False,
+                    )
+                ],
+                **self.train_params,
+            )
+
+        else:
+            self.train_mode = False
+            assert (
+                self.train_params["num_boost_round"] < 9999
+            ), "num_boost_round should be set."
+            dtrain = xgb.DMatrix(X_train, label=y_train)
+
+            self.model = xgb.train(
+                self.model_params,
+                dtrain,
+                **self.train_params,
+            )
 
     def predict(self, features):
         dtest = xgb.DMatrix(features)
@@ -97,22 +113,37 @@ class LightGBM(AbstractGBDT):
         self.model_params = self.cfg.model_params
         self.train_params = self.cfg.train_params
 
-    def fit(self, X_train, y_train, X_valid, y_valid):
+    def fit(self, X_train, y_train, X_valid=None, y_valid=None):
 
-        d_train = lgb.Dataset(X_train, label=y_train)
-        d_valid = lgb.Dataset(X_valid, label=y_valid)
+        if len(X_valid) != 0:
+            self.train_mode = True
 
-        self.model = lgb.train(
-            params=self.model_params,
-            train_set=d_train,
-            valid_sets=[d_train, d_valid],
-            valid_names=["train", "valid"],
-            callbacks=[
-                lgb.early_stopping(stopping_rounds=100, verbose=True),
-                lgb.log_evaluation(1000),
-            ],
-            **self.train_params,
-        )
+            d_train = lgb.Dataset(X_train, label=y_train)
+            d_valid = lgb.Dataset(X_valid, label=y_valid)
+
+            self.model = lgb.train(
+                params=self.model_params,
+                train_set=d_train,
+                valid_sets=[d_train, d_valid],
+                valid_names=["train", "valid"],
+                callbacks=[
+                    lgb.early_stopping(stopping_rounds=100, verbose=True),
+                    lgb.log_evaluation(1000),
+                ],
+                **self.train_params,
+            )
+        else:
+            self.train_mode = False
+            assert (
+                self.train_params["num_boost_round"] < 9999
+            ), "num_boost_round should be set."
+            d_train = lgb.Dataset(X_train, label=y_train)
+
+            self.model = lgb.train(
+                params=self.model_params,
+                train_set=d_train,
+                **self.train_params,
+            )
 
     def predict(self, features):
         return self.model.predict(features)
@@ -142,17 +173,31 @@ class CatBoost(AbstractGBDT):
         self.model_params = self.cfg.model_params
         self.train_params = self.cfg.train_params
 
-    def fit(self, X_train, y_train, X_valid, y_valid):
+    def fit(self, X_train, y_train, X_valid=None, y_valid=None):
 
-        d_train = cbt.Pool(X_train, label=y_train)
-        d_valid = cbt.Pool(X_valid, label=y_valid)
+        if len(X_valid) != 0:
+            self.train_mode = True
+            d_train = cbt.Pool(X_train, label=y_train)
+            d_valid = cbt.Pool(X_valid, label=y_valid)
 
-        self.model = cbt.train(
-            params=self.model_params,
-            dtrain=d_train,
-            evals=d_valid,
-            # **self.train_params,
-        )
+            self.model = cbt.train(
+                params=self.model_params,
+                dtrain=d_train,
+                evals=d_valid,
+                # **self.train_params,
+            )
+        else:
+            self.train_mode = False
+            assert (
+                self.train_params["num_boost_round"] < 9999
+            ), "num_boost_round should be set."
+            d_train = cbt.Pool(X_train, label=y_train)
+
+            self.model = cbt.train(
+                params=self.model_params,
+                dtrain=d_train,
+                **self.train_params,
+            )
 
     def predict(self, features):
         return self.model.predict(features)
