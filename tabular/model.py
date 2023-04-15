@@ -1,5 +1,6 @@
 import pickle
 
+import pandas as pd
 import xgboost as xgb
 import lightgbm as lgb
 import catboost as cbt
@@ -47,7 +48,7 @@ class XGBoost(AbstractGBDT):
     def fit(self, X_train, y_train, X_valid=None, y_valid=None):
 
         # train mode
-        if len(X_valid) != 0:
+        if isinstance(X_valid, pd.DataFrame):
             self.train_mode = True
             dtrain = xgb.DMatrix(X_train, label=y_train)
             dvalid = xgb.DMatrix(X_valid, label=y_valid)
@@ -115,7 +116,7 @@ class LightGBM(AbstractGBDT):
 
     def fit(self, X_train, y_train, X_valid=None, y_valid=None):
 
-        if len(X_valid) != 0:
+        if isinstance(X_valid, pd.DataFrame):
             self.train_mode = True
 
             d_train = lgb.Dataset(X_train, label=y_train)
@@ -175,7 +176,7 @@ class CatBoost(AbstractGBDT):
 
     def fit(self, X_train, y_train, X_valid=None, y_valid=None):
 
-        if len(X_valid) != 0:
+        if isinstance():
             self.train_mode = True
             d_train = cbt.Pool(X_train, label=y_train)
             d_valid = cbt.Pool(X_valid, label=y_valid)
