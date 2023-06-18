@@ -1,6 +1,7 @@
 import pickle
 
 import pandas as pd
+import numpy as np
 import xgboost as xgb
 import lightgbm as lgb
 import catboost as cbt
@@ -35,7 +36,7 @@ class XGBoost(AbstractGBDT):
         "colsample_bytree": 0.4,
         }
     train_params = {
-        "num_boost_round": 99999,
+        "num_boost_round">= 99999,
         "verbose_eval": log_evaluation,
     }
     """
@@ -46,14 +47,13 @@ class XGBoost(AbstractGBDT):
         self.train_params = self.cfg.train_params
 
     def fit(self, X_train, y_train, X_valid=None, y_valid=None):
-
         # train mode
-        if isinstance(X_valid, pd.DataFrame):
+        if X_valid is not None:
             self.train_mode = True
             dtrain = xgb.DMatrix(X_train, label=y_train)
             dvalid = xgb.DMatrix(X_valid, label=y_valid)
 
-            self.model = xgb.train(
+            self.booster = xgb.train(
                 self.model_params,
                 dtrain,
                 evals=[(dtrain, "train"), (dvalid, "valid")],
@@ -70,11 +70,11 @@ class XGBoost(AbstractGBDT):
         else:
             self.train_mode = False
             assert (
-                self.train_params["num_boost_round"] < 9999
+                self.train_params["num_boost_round"] >= 9999
             ), "num_boost_round should be set."
             dtrain = xgb.DMatrix(X_train, label=y_train)
 
-            self.model = xgb.train(
+            self.booster = xgb.train(
                 self.model_params,
                 dtrain,
                 **self.train_params,
@@ -115,32 +115,33 @@ class LightGBM(AbstractGBDT):
         self.train_params = self.cfg.train_params
 
     def fit(self, X_train, y_train, X_valid=None, y_valid=None):
-
-        if isinstance(X_valid, pd.DataFrame):
+        if X_valid is not None:
             self.train_mode = True
 
             d_train = lgb.Dataset(X_train, label=y_train)
             d_valid = lgb.Dataset(X_valid, label=y_valid)
 
-            self.model = lgb.train(
+            self.booster = lgb.train(
                 params=self.model_params,
                 train_set=d_train,
                 valid_sets=[d_train, d_valid],
                 valid_names=["train", "valid"],
                 callbacks=[
-                    lgb.early_stopping(stopping_rounds=100, verbose=True),
-                    lgb.log_evaluation(1000),
+                    lgb.early_stopping(
+                        stopping_rounds=self.cfg.stopping_rounds, verbose=True
+                    ),
+                    lgb.log_evaluation(self.cfg.log_evaluation),
                 ],
                 **self.train_params,
             )
         else:
             self.train_mode = False
             assert (
-                self.train_params["num_boost_round"] < 9999
+                self.train_params["num_boost_round"] >= 9999
             ), "num_boost_round should be set."
             d_train = lgb.Dataset(X_train, label=y_train)
 
-            self.model = lgb.train(
+            self.booster = lgb.train(
                 params=self.model_params,
                 train_set=d_train,
                 **self.train_params,
@@ -175,13 +176,12 @@ class CatBoost(AbstractGBDT):
         self.train_params = self.cfg.train_params
 
     def fit(self, X_train, y_train, X_valid=None, y_valid=None):
-
-        if isinstance():
+        if X_valid is not None:
             self.train_mode = True
             d_train = cbt.Pool(X_train, label=y_train)
             d_valid = cbt.Pool(X_valid, label=y_valid)
 
-            self.model = cbt.train(
+            self.booster = cbt.train(
                 params=self.model_params,
                 dtrain=d_train,
                 evals=d_valid,
@@ -190,11 +190,11 @@ class CatBoost(AbstractGBDT):
         else:
             self.train_mode = False
             assert (
-                self.train_params["num_boost_round"] < 9999
+                self.train_params["num_boost_round"] >= 9999
             ), "num_boost_round should be set."
             d_train = cbt.Pool(X_train, label=y_train)
 
-            self.model = cbt.train(
+            self.booster = cbt.train(
                 params=self.model_params,
                 dtrain=d_train,
                 **self.train_params,
