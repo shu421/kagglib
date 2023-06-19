@@ -82,7 +82,7 @@ class XGBoost(AbstractGBDT):
 
     def predict(self, features):
         dtest = xgb.DMatrix(features)
-        return self.model.predict(dtest)
+        return self.booster.predict(dtest)
 
 
 class LightGBM(AbstractGBDT):
@@ -148,7 +148,7 @@ class LightGBM(AbstractGBDT):
             )
 
     def predict(self, features):
-        return self.model.predict(features)
+        return self.booster.predict(features)
 
 
 class CatBoost(AbstractGBDT):
@@ -201,7 +201,7 @@ class CatBoost(AbstractGBDT):
             )
 
     def predict(self, features):
-        return self.model.predict(features)
+        return self.booster.predict(features)
 
 
 def get_model(cfg):
