@@ -5,13 +5,19 @@ import random
 import subprocess
 from pathlib import Path
 
-import torch
 import numpy as np
 import pandas as pd
 
-api_path = Path("/root/.kaggle/kaggle.json")
-if api_path.is_file():
+try:
+    import torch
+except:
+    pass
+# api_path = Path("/root/.kaggle/kaggle.json")
+try:
     from kaggle.api.kaggle_api_extended import KaggleApi
+except:
+    pass
+
 
 
 class Timer:
@@ -188,6 +194,9 @@ def seed_everything(seed=42):
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
+    try:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+    except:
+        pass
