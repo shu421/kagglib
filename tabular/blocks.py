@@ -3,8 +3,10 @@ import pickle
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import OrdinalEncoder
+# from sklearn.preprocessing import OrdinalEncoder
+from category_encoders import OrdinalEncoder
 from sklearn.decomposition import TruncatedSVD
+from sklearn.preprocessing import TargetEncoder
 from category_encoders import CountEncoder
 
 from kagglib.utils.utils import Timer, decorate, reduce_mem_usage
@@ -52,10 +54,11 @@ class LabelEncodingBlock(AbstractBaseBlock):
         self.cols = cols
 
     def fit(self, input_df, y=None):
-        self.oe = OrdinalEncoder()
+        # self.oe = OrdinalEncoder(unknown_value=-1, handle_unknown="use_encoded_value")
+        self.oe = OrdinalEncoder(handle_missing="return_nan", handle_unknown="return_nan")
         self.oe.fit(input_df[self.cols])
 
-        return self.transform(input_df)
+        return self.transform(input_df[self.cols])
 
     def transform(self, input_df: pd.DataFrame):
         output_df = input_df[self.cols].copy()
@@ -116,32 +119,51 @@ class AggBlock(AbstractBaseBlock):
 
 
 class TargetEncodingBlock(AbstractBaseBlock):
-    """指定したカラムをtarget encofingする"""
+    """指定したカラムをカウントエンコード"""
 
-    def __init__(self, col: str, func: str, cv_list: list):
-        self.col = col
-        self.func = func
-        self.cv_list = cv_list
+    def __init__(self, cols, cv=5, smooth="auto", target_type="continuous"):
+        self.cols = cols
+        self.cv = cv
+        self.smooth = smooth
+        self.target_type = target_type
 
-    def fit(self, input_df, y):
-        output_df = input_df.copy()
-        for i, (train_idx, valid_idx) in enumerate(self.cv_list):
-            group = input_df.iloc[train_idx].groupby(self.col)[y]
-            group = getattr(group, self.func)().to_dict()
-            output_df.loc[valid_idx, f"{self.col}_{self.func}"] = input_df.loc[
-                valid_idx, self.col
-            ].map(group)
+    def fit(self, input_df, y=None):
+        self.te = TargetEncoder(smooth=self.smooth, cv=self.cv, target_type=self.target_type, random_state=42)
+        return pd.DataFrame(self.te.fit_transform(input_df[self.cols], y))
 
-        self.group = input_df.groupby(self.col)[y]
-        self.group = getattr(self.group, self.func)().to_dict()
-        return output_df[[f"{self.col}_{self.func}"]].astype(np.float)
+    def transform(self, input_df: pd.DataFrame):
+        output_df = input_df[self.cols].copy()
+        output_df = self.te.transform(output_df)
 
-    def transform(self, input_df):
-        output_df = pd.DataFrame()
-        output_df[f"{self.col}_{self.func}"] = (
-            input_df[self.col].map(self.group).astype(np.float)
-        )
-        return output_df.astype(np.float)
+        return pd.DataFrame(output_df)
+
+# class TargetEncodingBlock(AbstractBaseBlock):
+#     """指定したカラムをtarget encofingする"""
+
+#     def __init__(self, col: str, func: str, cv_list: list):
+#         self.col = col
+#         self.func = func
+#         self.cv_list = cv_list
+
+#     def fit(self, input_df, y):
+#         output_df = input_df.copy()
+#         for i, (train_idx, valid_idx) in enumerate(self.cv_list):
+#             group = input_df.iloc[train_idx].groupby(self.col)[y]
+#             group = getattr(group, self.func)().to_dict()
+#             output_df.loc[valid_idx, f"{self.col}_{self.func}"] = input_df.loc[
+#                 valid_idx, self.col
+#             ].map(group)
+
+#         self.group = input_df.groupby(self.col)[y]
+#         self.group = getattr(self.group, self.func)().to_dict()
+#         return output_df[[f"{self.col}_{self.func}"]].astype(np.float)
+
+#     def transform(self, input_df):
+#         output_df = pd.DataFrame()
+#         output_df[f"{self.col}_{self.func}"] = (
+#             input_df[self.col].map(self.group).astype(np.float)
+#         )
+#         return output_df.astype(np.float)
 
 
 class AdditiveTargetEncodingBlock(AbstractBaseBlock):
@@ -355,11 +377,13 @@ def run_blocks(input_df, blocks, y=None, is_test=False):
     """
     output_df = pd.DataFrame()
 
-    print(decorate("start run blocks...", "*"))
+    # print(decorate("start run blocks...", "*"))
 
-    with Timer(prefix=f"run is_test={is_test}"):
+    # with Timer(prefix=f"run is_test={is_test}"):
+    with Timer(verbose=None):
         for block in blocks:
-            with Timer(prefix=f"\t- {str(block)}"):
+            # with Timer(prefix=f"\t- {str(block)}"):
+            with Timer(verbose=None):
                 if not is_test:
                     out_i = block.fit(input_df, y=y)
                 else:
