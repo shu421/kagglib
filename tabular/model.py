@@ -36,7 +36,7 @@ class XGBoost(AbstractGBDT):
         "colsample_bytree": 0.4,
         }
     train_params = {
-        "num_boost_round">= 99999,
+        "num_boost_round": 99999,
         "verbose_eval": log_evaluation,
     }
     """
