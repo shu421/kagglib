@@ -3,7 +3,7 @@ import pickle
 
 import numpy as np
 import pandas as pd
-# from sklearn.preprocessing import OrdinalEncoder
+
 from category_encoders import OrdinalEncoder
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import TargetEncoder
@@ -20,7 +20,7 @@ class AbstractBaseBlock:
         input_dfに含まれるtargetの名前
     """
 
-    def fit(self, input_df: pd.DataFrame, y=None):
+    def fit(self, input_df: pd.DataFrame, y: str = None):
         return self.transform(input_df)
 
     def transform(self, input_df: pd.DataFrame):
@@ -30,11 +30,11 @@ class AbstractBaseBlock:
 class IdentityBlock(AbstractBaseBlock):
     """そのまま使う特徴量"""
 
-    def __init__(self, use_cols):
-        self.use_cols = use_cols
+    def __init__(self, cols: list):
+        self.cols = cols
 
     def transform(self, input_df):
-        return input_df[self.use_cols].copy()
+        return input_df[self.cols].copy()
 
 
 class WrapperBlock(AbstractBaseBlock):
@@ -50,12 +50,13 @@ class WrapperBlock(AbstractBaseBlock):
 class LabelEncodingBlock(AbstractBaseBlock):
     """指定したカラムをラベルエンコード"""
 
-    def __init__(self, cols):
+    def __init__(self, cols: list):
         self.cols = cols
 
     def fit(self, input_df, y=None):
-        # self.oe = OrdinalEncoder(unknown_value=-1, handle_unknown="use_encoded_value")
-        self.oe = OrdinalEncoder(handle_missing="return_nan", handle_unknown="return_nan")
+        self.oe = OrdinalEncoder(
+            handle_missing="return_nan", handle_unknown="return_nan"
+        )
         self.oe.fit(input_df[self.cols])
 
         return self.transform(input_df[self.cols])
@@ -71,7 +72,7 @@ class LabelEncodingBlock(AbstractBaseBlock):
 class CountEncodingBlock(AbstractBaseBlock):
     """指定したカラムをカウントエンコード"""
 
-    def __init__(self, cols, normalize):
+    def __init__(self, cols: list, normalize: bool = True):
         self.cols = cols
         self.normalize = normalize
 
@@ -91,7 +92,7 @@ class CountEncodingBlock(AbstractBaseBlock):
 class AggBlock(AbstractBaseBlock):
     """keyで集約したvaluesにfuncsを適応"""
 
-    def __init__(self, key: str, values: list, funcs: dict):
+    def __init__(self, key: str, values: list, funcs: list):
         self.key = key
         self.values = values
         self.funcs = funcs
@@ -100,13 +101,13 @@ class AggBlock(AbstractBaseBlock):
         self.meta_df = input_df.groupby(self.key)[self.values].agg(self.funcs)
 
         # rename
-        cols_level_0 = self.meta_df.columns.droplevel(0)
-        cols_level_1 = self.meta_df.columns.droplevel(1)
+        cols_level_0 = self.meta_df.cols.droplevel(0)
+        cols_level_1 = self.meta_df.cols.droplevel(1)
         new_cols = [
             f"{cols_level_1[i]}_{cols_level_0[i]}_{self.key}"
             for i in range(len(cols_level_1))
         ]
-        self.meta_df.columns = new_cols
+        self.meta_df.cols = new_cols
         return self.transform(input_df)
 
     def transform(self, input_df: pd.DataFrame):
@@ -121,49 +122,63 @@ class AggBlock(AbstractBaseBlock):
 class TargetEncodingBlock(AbstractBaseBlock):
     """指定したカラムをカウントエンコード"""
 
-    def __init__(self, cols, cv=5, smooth="auto", target_type="continuous"):
+    def __init__(
+        self,
+        cols: list,
+        cv: int = 5,
+        smooth: str = "auto",
+        target_type: str = "continuous",
+    ):
         self.cols = cols
         self.cv = cv
         self.smooth = smooth
         self.target_type = target_type
 
-    def fit(self, input_df, y=None):
-        self.te = TargetEncoder(smooth=self.smooth, cv=self.cv, target_type=self.target_type, random_state=42)
-        return pd.DataFrame(self.te.fit_transform(input_df[self.cols], y))
+    def fit(self, input_df: pd.DataFrame, y: str):
+        self.te = TargetEncoder(
+            smooth=self.smooth,
+            cv=self.cv,
+            target_type=self.target_type,
+            random_state=42,
+        )
+        output_df = pd.DataFrame(
+            self.te.fit_transform(input_df[self.cols], input_df[y]), cols=self.cols
+        )
+        return output_df
 
     def transform(self, input_df: pd.DataFrame):
         output_df = input_df[self.cols].copy()
-        output_df = self.te.transform(output_df)
-
+        output_df = pd.DataFrame(self.te.transform(output_df), cols=self.cols)
         return pd.DataFrame(output_df)
 
-# class TargetEncodingBlock(AbstractBaseBlock):
-#     """指定したカラムをtarget encofingする"""
 
-#     def __init__(self, col: str, func: str, cv_list: list):
-#         self.col = col
-#         self.func = func
-#         self.cv_list = cv_list
+class TargetEncodingwithFoldBlock(AbstractBaseBlock):
+    """指定したカラムをtarget encofingする"""
 
-#     def fit(self, input_df, y):
-#         output_df = input_df.copy()
-#         for i, (train_idx, valid_idx) in enumerate(self.cv_list):
-#             group = input_df.iloc[train_idx].groupby(self.col)[y]
-#             group = getattr(group, self.func)().to_dict()
-#             output_df.loc[valid_idx, f"{self.col}_{self.func}"] = input_df.loc[
-#                 valid_idx, self.col
-#             ].map(group)
+    def __init__(self, col: str, func: str, cv_list: list):
+        self.col = col
+        self.func = func
+        self.cv_list = cv_list
 
-#         self.group = input_df.groupby(self.col)[y]
-#         self.group = getattr(self.group, self.func)().to_dict()
-#         return output_df[[f"{self.col}_{self.func}"]].astype(np.float)
+    def fit(self, input_df, y):
+        output_df = input_df.copy()
+        for i, (train_idx, valid_idx) in enumerate(self.cv_list):
+            group = input_df.iloc[train_idx].groupby(self.col)[y]
+            group = getattr(group, self.func)().to_dict()
+            output_df.loc[valid_idx, f"{self.col}_{self.func}"] = input_df.loc[
+                valid_idx, self.col
+            ].map(group)
 
-#     def transform(self, input_df):
-#         output_df = pd.DataFrame()
-#         output_df[f"{self.col}_{self.func}"] = (
-#             input_df[self.col].map(self.group).astype(np.float)
-#         )
-#         return output_df.astype(np.float)
+        self.group = input_df.groupby(self.col)[y]
+        self.group = getattr(self.group, self.func)().to_dict()
+        return output_df[[f"{self.col}_{self.func}"]].astype(np.float64)
+
+    def transform(self, input_df):
+        output_df = pd.DataFrame()
+        output_df[f"{self.col}_{self.func}"] = (
+            input_df[self.col].map(self.group).astype(np.float64)
+        )
+        return output_df.astype(np.float64)
 
 
 class AdditiveTargetEncodingBlock(AbstractBaseBlock):
@@ -222,14 +237,14 @@ class AdditiveTargetEncodingBlock(AbstractBaseBlock):
             .apply(lambda x: self.additive_smoothing(x, self.alpha, self.p), axis=1)
             .to_dict()
         )
-        return output_df[[f"{self.col}_alpha={self.alpha}"]].astype(float)
+        return output_df[[f"{self.col}_alpha={self.alpha}"]].astype(np.float64)
 
     def transform(self, input_df):
         output_df = pd.DataFrame()
         output_df[f"{self.col}_alpha={self.alpha}"] = (
-            input_df[self.col].map(self.add_te_dict).astype(float)
+            input_df[self.col].map(self.add_te_dict).astype(np.float64)
         )
-        return output_df.astype(float)
+        return output_df.astype(np.float64)
 
 
 class PercentileTargetEncodingBlock(AbstractBaseBlock):
@@ -300,14 +315,14 @@ class PercentileTargetEncodingBlock(AbstractBaseBlock):
             .apply(lambda x: self.calc_percentile(x, y), axis=1)
             .to_dict()
         )
-        return output_df[[f"{self.col}"]].astype(float)
+        return output_df[[f"{self.col}"]].astype(np.float64)
 
     def transform(self, input_df):
         output_df = pd.DataFrame()
         output_df[f"{self.col}"] = (
-            input_df[self.col].map(self.add_te_dict).astype(float)
+            input_df[self.col].map(self.add_te_dict).astype(np.float64)
         )
-        return output_df.astype(float)
+        return output_df.astype(np.float64)
 
 
 class SVDBlock(AbstractBaseBlock):
@@ -349,7 +364,12 @@ class SVDBlock(AbstractBaseBlock):
     #     return output_df
 
 
-def run_blocks(input_df, blocks, y=None, is_test=False):
+def run_blocks(
+    input_df: pd.DataFrame,
+    blocks: AbstractBaseBlock,
+    y: str = None,
+    is_test: bool = False,
+):
     """_summary_
 
     Args:
@@ -377,12 +397,8 @@ def run_blocks(input_df, blocks, y=None, is_test=False):
     """
     output_df = pd.DataFrame()
 
-    # print(decorate("start run blocks...", "*"))
-
-    # with Timer(prefix=f"run is_test={is_test}"):
     with Timer(verbose=None):
         for block in blocks:
-            # with Timer(prefix=f"\t- {str(block)}"):
             with Timer(verbose=None):
                 if not is_test:
                     out_i = block.fit(input_df, y=y)
@@ -393,5 +409,5 @@ def run_blocks(input_df, blocks, y=None, is_test=False):
             out_i = reduce_mem_usage(out_i, verbose=False)
             name = block.__class__.__name__
             output_df = pd.concat([output_df, out_i.add_suffix(f"@{name}")], axis=1)
-    assert len(output_df.columns) == len(set(output_df.columns)), "col name duplicates"
+    assert len(output_df.cols) == len(set(output_df.cols)), "col name duplicates"
     return output_df
