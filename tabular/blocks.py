@@ -382,7 +382,7 @@ def run_blocks(
         output_df (pd.DataFrame): 特徴量が格納されたデータフレーム
 
     Usage:
-        blocks = [IdentityBlock(use_cols=numeric_cols),
+        blocks = [IdentityBlock(cols=numeric_cols),
                 LabelEncodingBlock(cols=cat_cols),
                 CountEncodingBlock(cols=cat_cols, normalize=False),
                 # *[TargetEncodingBlock(col=col,
