@@ -101,13 +101,13 @@ class AggBlock(AbstractBaseBlock):
         self.meta_df = input_df.groupby(self.key)[self.values].agg(self.funcs)
 
         # rename
-        cols_level_0 = self.meta_df.cols.droplevel(0)
-        cols_level_1 = self.meta_df.cols.droplevel(1)
+        cols_level_0 = self.meta_df.columns.droplevel(0)
+        cols_level_1 = self.meta_df.columns.droplevel(1)
         new_cols = [
             f"{cols_level_1[i]}_{cols_level_0[i]}_{self.key}"
             for i in range(len(cols_level_1))
         ]
-        self.meta_df.cols = new_cols
+        self.meta_df.columns = new_cols
         return self.transform(input_df)
 
     def transform(self, input_df: pd.DataFrame):
@@ -409,5 +409,5 @@ def run_blocks(
             out_i = reduce_mem_usage(out_i, verbose=False)
             name = block.__class__.__name__
             output_df = pd.concat([output_df, out_i.add_suffix(f"@{name}")], axis=1)
-    assert len(output_df.cols) == len(set(output_df.cols)), "col name duplicates"
+    assert len(output_df.columns) == len(set(output_df.columns)), "col name duplicates"
     return output_df
