@@ -1,3 +1,2 @@
-from .blocks import *
-from .model_selection import *
-from .model import *
+from kagglib.tabular.blocks import *
+from kagglib.tabular.model import *

@@ -1,8 +1,8 @@
 import torch
 from torch import Tensor
+from torch.cuda.amp import autocast
 from torch.nn import Module
 from torch.optim import Optimizer
-from torch.cuda.amp import autocast
 
 
 class FGM:

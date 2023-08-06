@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 
@@ -21,7 +22,14 @@ class AverageMeter(object):
 
 
 class EarlyStopping:
-    def __init__(self, patience=7, mode="max", delta=0.0, verbose=False, model_path="checkpoint.pt"):
+    def __init__(
+        self,
+        patience=7,
+        mode="max",
+        delta=0.0,
+        verbose=False,
+        model_path="checkpoint.pt",
+    ):
         self.patience = patience
         self.mode = mode
         self.delta = delta
@@ -38,11 +46,10 @@ class EarlyStopping:
             self.best_score = -np.inf
 
     def __call__(self, score, pred, loss, model):
-
         if self.mode == "min":
-            improved_cond = (score < self.best_score + self.delta)
+            improved_cond = score < self.best_score + self.delta
         elif self.mode == "max":
-            improved_cond = (score > self.best_score + self.delta)
+            improved_cond = score > self.best_score + self.delta
         if improved_cond:
             self.save_checkpoint(score, model)
             self.best_score = score
@@ -52,9 +59,7 @@ class EarlyStopping:
         else:
             self.counter += 1
             if self.verbose:
-                print(
-                    f"EarlyStopping counter: {self.counter} out of {self.patience}"
-                )
+                print(f"EarlyStopping counter: {self.counter} out of {self.patience}")
             if self.counter >= self.patience:
                 self.early_stop = True
 

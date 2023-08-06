@@ -1,8 +1,8 @@
-import os
-import time
 import json
+import os
 import random
 import subprocess
+import time
 from pathlib import Path
 
 import numpy as np
@@ -104,7 +104,7 @@ def reduce_mem_usage(df, verbose=True):
 
 
 def get_logger(filename):
-    from logging import getLogger, INFO, StreamHandler, FileHandler, Formatter
+    from logging import INFO, FileHandler, Formatter, StreamHandler, getLogger
 
     logger = getLogger(__name__)
     logger.setLevel(INFO)

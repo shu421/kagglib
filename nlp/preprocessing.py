@@ -1,6 +1,7 @@
 # 文章のバグを治す
 import codecs
 from typing import Tuple
+
 from text_unidecode import unidecode
 
 

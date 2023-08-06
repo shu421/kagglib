@@ -3,13 +3,11 @@ import pickle
 
 import numpy as np
 import pandas as pd
-
-from category_encoders import OrdinalEncoder
+from category_encoders import CountEncoder, OrdinalEncoder
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import TargetEncoder
-from category_encoders import CountEncoder
 
-from kagglib.utils._utils import Timer, decorate, reduce_mem_usage
+from kagglib.utils import Timer, reduce_mem_usage
 
 
 class AbstractBaseBlock:

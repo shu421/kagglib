@@ -1,10 +1,10 @@
 import pickle
 
-import pandas as pd
-import numpy as np
-import xgboost as xgb
-import lightgbm as lgb
 import catboost as cbt
+import lightgbm as lgb
+import numpy as np
+import pandas as pd
+import xgboost as xgb
 
 
 class AbstractGBDT:
