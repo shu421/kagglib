@@ -70,6 +70,32 @@ class MeanPooling(nn.Module):
         return mean_embeddings
 
 
+class GeMPooling(nn.Module):
+    """
+    Generalized Mean Pooling layer
+    """
+
+    def __init__(self, dim=1, p=3, eps=1e-6):
+        super(GeMPooling, self).__init__()
+        self.dim = dim
+        self.p = Parameter(torch.ones(1) * p)
+        self.eps = eps
+        self.feat_mult = 1
+
+    def forward(self, last_hidden_state, attention_mask):
+        attention_mask_expanded = attention_mask.unsqueeze(-1).expand(
+            last_hidden_state.shape
+        )
+        x = (
+            (last_hidden_state.clamp(min=self.eps) * attention_mask_expanded)
+            .pow(self.p)
+            .sum(self.dim)
+        )
+        ret = x / attention_mask_expanded.sum(self.dim).clip(min=self.eps)
+        ret = ret.pow(1 / self.p)
+        return ret
+
+
 class WeightedLayerPooling(nn.Module):
     """
     Usage:
