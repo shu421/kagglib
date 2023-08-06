@@ -9,7 +9,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import TargetEncoder
 from category_encoders import CountEncoder
 
-from kagglib.utils.utils import Timer, decorate, reduce_mem_usage
+from kagglib.utils._utils import Timer, decorate, reduce_mem_usage
 
 
 class AbstractBaseBlock:
@@ -142,13 +142,13 @@ class TargetEncodingBlock(AbstractBaseBlock):
             random_state=42,
         )
         output_df = pd.DataFrame(
-            self.te.fit_transform(input_df[self.cols], input_df[y]), cols=self.cols
+            self.te.fit_transform(input_df[self.cols], input_df[y]), columns=self.cols
         )
         return output_df
 
     def transform(self, input_df: pd.DataFrame):
         output_df = input_df[self.cols].copy()
-        output_df = pd.DataFrame(self.te.transform(output_df), cols=self.cols)
+        output_df = pd.DataFrame(self.te.transform(output_df), columns=self.cols)
         return pd.DataFrame(output_df)
 
 

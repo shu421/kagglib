@@ -3,7 +3,7 @@ import pickle
 
 import numpy as np
 
-from kagglib.utils.utils import decorate
+from kagglib.utils._utils import decorate
 from kagglib.tabular.model import get_model, save_model, load_model
 
 

@@ -12,12 +12,10 @@ try:
     import torch
 except:
     pass
-# api_path = Path("/root/.kaggle/kaggle.json")
 try:
     from kaggle.api.kaggle_api_extended import KaggleApi
 except:
     pass
-
 
 
 class Timer:
@@ -30,7 +28,6 @@ class Timer:
         sep=" ",
         verbose=0,
     ):
-
         if prefix:
             format_str = str(prefix) + sep + format_str
         if suffix:
@@ -113,7 +110,7 @@ def get_logger(filename):
     logger.setLevel(INFO)
     handler1 = StreamHandler()
     handler1.setFormatter(Formatter("%(message)s"))
-    handler2 = FileHandler(filename=f"{filename}.log")
+    handler2 = FileHandler(filename=f"{filename}")
     handler2.setFormatter(Formatter("%(message)s"))
     for h in logger.handlers[:]:
         logger.removeHandler(h)
@@ -142,37 +139,30 @@ def setup(cfg):
     os.environ["KAGGLE_USERNAME"] = json_data["username"]
     os.environ["KAGGLE_KEY"] = json_data["key"]
 
-    cfg.INPUT = os.path.join(cfg.BASE_PATH, "input")
-    cfg.OUTPUT = os.path.join(cfg.BASE_PATH, "output")
-    cfg.SUBMISSION = os.path.join(cfg.BASE_PATH, "submission")
-    cfg.DATASET = os.path.join(cfg.BASE_PATH, "dataset")
+    cfg.input_path = os.path.join(cfg.base_path, "input")
+    cfg.output = os.path.join(cfg.base_path, "output")
+    cfg.dataset_path = os.path.join(cfg.base_path, "dataset")
 
-    cfg.OUTPUT_EXP = os.path.join(cfg.OUTPUT, cfg.EXP)
-    cfg.EXP_MODEL = os.path.join(cfg.OUTPUT_EXP, "model")
-    cfg.EXP_PREDS = os.path.join(cfg.OUTPUT_EXP, "preds")
+    cfg.output_exp_path = os.path.join(cfg.output, cfg.exp)
+    cfg.exp_model_path = os.path.join(cfg.output_exp_path, "model")
+    cfg.exp_preds_path = os.path.join(cfg.output_exp_path, "preds")
+
+    cfg.log_path = Path(cfg.base_path) / f"output/log"
+    if not cfg.log_path.is_dir():
+        cfg.log_path.mkdir(parents=True)
 
     # make dirs
-    for d in [cfg.INPUT, cfg.SUBMISSION, cfg.EXP_MODEL, cfg.EXP_PREDS]:
+    for d in [cfg.input_path, cfg.exp_model_path, cfg.exp_preds_path, cfg.log_path]:
         os.makedirs(d, exist_ok=True)
 
-    if len(os.listdir(cfg.INPUT)) == 0:
+    if len(os.listdir(cfg.input_path)) == 0:
         # load dataset
         subprocess.run(
-            f"kaggle competitions download -c {cfg.COMPETITION} -p {cfg.INPUT}",
+            f"kaggle competitions download -c {cfg.competition} -p {cfg.input_path}",
             shell=True,
         )
-        filepath = os.path.join(cfg.INPUT, cfg.COMPETITION + ".zip")
-        subprocess.run(f"unzip -d {cfg.INPUT} {filepath}", shell=True)
-
-    for path in cfg.DATASET_PATH:
-        datasetpath = os.path.join(cfg.DATASET, path.split("/")[1])
-        if not os.path.exists(datasetpath):
-            os.makedirs(datasetpath, exist_ok=True)
-            subprocess.run(
-                f"kaggle datasets download path -p {datasetpath}", shell=True
-            )
-            filepath = os.path.join(datasetpath, path.split("/")[1] + ".zip")
-            subprocess.run(f"unzip -d {datasetpath} {filepath}", shell=True)
+        filepath = os.path.join(cfg.input_path, cfg.competition + ".zip")
+        subprocess.run(f"unzip -d {cfg.input_path} {filepath}", shell=True)
 
     seed_everything(cfg.seed)
     return cfg
