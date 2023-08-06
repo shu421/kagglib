@@ -21,7 +21,7 @@ def set_wandb(cfg, name, group, config_path="/.kaggle/wandb.json"):
         )
 
     run = wandb.init(
-        project=cfg.COMPETITION,
+        project=cfg.competition,
         name=name,
         config=class2dict(cfg),
         group=group,
