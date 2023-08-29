@@ -134,34 +134,35 @@ def setup(cfg):
     cfg.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # use kaggle api (need kaggle token)
-    f = open(cfg.api_path, "r")
-    json_data = json.load(f)
+    with open(cfg.api_path, "r") as f:
+        json_data = json.load(f)
     os.environ["KAGGLE_USERNAME"] = json_data["username"]
     os.environ["KAGGLE_KEY"] = json_data["key"]
 
-    cfg.input_path = os.path.join(cfg.base_path, "input")
-    cfg.output = os.path.join(cfg.base_path, "output")
-    cfg.dataset_path = os.path.join(cfg.base_path, "dataset")
+    cfg.base_path = Path(cfg.base_path)  # Convert to Path object
+    cfg.input_path = cfg.base_path / "input"
+    cfg.output_path = cfg.base_path / "output"
+    cfg.dataset_path = cfg.base_path / "dataset"
 
-    cfg.output_exp_path = os.path.join(cfg.output, cfg.exp)
-    cfg.exp_model_path = os.path.join(cfg.output_exp_path, "model")
-    cfg.exp_preds_path = os.path.join(cfg.output_exp_path, "preds")
+    cfg.output_exp_path = cfg.output_path / cfg.exp
+    cfg.exp_model_path = cfg.output_exp_path / "model"
+    cfg.exp_preds_path = cfg.output_exp_path / "preds"
 
-    cfg.log_path = Path(cfg.base_path) / f"output/log"
+    cfg.log_path = cfg.base_path / "output/log"
     if not cfg.log_path.is_dir():
         cfg.log_path.mkdir(parents=True)
 
     # make dirs
     for d in [cfg.input_path, cfg.exp_model_path, cfg.exp_preds_path, cfg.log_path]:
-        os.makedirs(d, exist_ok=True)
+        d.mkdir(parents=True, exist_ok=True)
 
-    if len(os.listdir(cfg.input_path)) == 0:
+    if len(list(cfg.input_path.iterdir())) == 0:
         # load dataset
         subprocess.run(
             f"kaggle competitions download -c {cfg.competition} -p {cfg.input_path}",
             shell=True,
         )
-        filepath = os.path.join(cfg.input_path, cfg.competition + ".zip")
+        filepath = cfg.input_path / (cfg.competition + ".zip")
         subprocess.run(f"unzip -d {cfg.input_path} {filepath}", shell=True)
 
     seed_everything(cfg.seed)
