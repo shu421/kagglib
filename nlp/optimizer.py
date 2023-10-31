@@ -47,9 +47,9 @@ def get_optimizer_grouped_parameters(cfg, model):
         },
     ]
     num_layers = model.config.num_hidden_layers
-    layers = [getattr(model, model_type).embeddings] + list(
+    layers = [getattr(model, model_type).embeddings] + [
         getattr(model, model_type).encoder.layer
-    )
+    ]
     layers.reverse()
     lr = cfg.encoder_lr
     for layer in layers:

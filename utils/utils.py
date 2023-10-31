@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import polars as pl
 
 try:
     import torch
@@ -103,6 +104,49 @@ def reduce_mem_usage(df, verbose=True):
     return df_out
 
 
+
+def reduce_mem_usage_pl(df: pl.DataFrame, verbose=True) -> pl.DataFrame:
+    numerics = ["Int8", "Int16", "Int32", "Int64", "Float32", "Float64"]
+    start_mem = df.estimated_size() / 1024**2
+
+    for col in df.columns:
+        col_type = df.get_column(col).dtype
+        if col_type in numerics:
+            c_min = df.get_column(col).min().to_numpy()[0]
+            c_max = df.get_column(col).max().to_numpy()[0]
+
+            if "Int" in col_type:
+                if c_min > np.iinfo(np.int8).min and c_max < np.iinfo(np.int8).max:
+                    df = df.with_columns(df[col].cast(pl.Int8))
+                elif c_min > np.iinfo(np.int16).min and c_max < np.iinfo(np.int16).max:
+                    df = df.with_columns(df[col].cast(pl.Int16))
+                elif c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
+                    df = df.with_columns(df[col].cast(pl.Int32))
+                elif c_min > np.iinfo(np.int64).min and c_max < np.iinfo(np.int64).max:
+                    df = df.with_columns(df[col].cast(pl.Int64))
+            else:
+                if (
+                    c_min > np.finfo(np.float16).min
+                    and c_max < np.finfo(np.float16).max
+                ):
+                    df = df.with_columns(df[col].cast(pl.Float32))
+                elif (
+                    c_min > np.finfo(np.float32).min
+                    and c_max < np.finfo(np.float32).max
+                ):
+                    df = df.with_columns(df[col].cast(pl.Float32))
+                else:
+                    df = df.with_columns(df[col].cast(pl.Float64))
+
+    if verbose:
+        end_mem = df.estimated_size() / 1024**2
+        num_reduction = str(100 * (start_mem - end_mem) / start_mem)
+        print(
+            f"Mem. usage decreased to {str(end_mem)[:3]}Mb:  {num_reduction[:2]}% reduction"
+        )
+    return df
+
+
 def get_logger(filename):
     from logging import INFO, FileHandler, Formatter, StreamHandler, getLogger
 
@@ -134,36 +178,36 @@ def setup(cfg):
     cfg.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # use kaggle api (need kaggle token)
-    with open(cfg.api_path, "r") as f:
+    with open(cfg.API_PATH, "r") as f:
         json_data = json.load(f)
     os.environ["KAGGLE_USERNAME"] = json_data["username"]
     os.environ["KAGGLE_KEY"] = json_data["key"]
 
-    cfg.base_path = Path(cfg.base_path)  # Convert to Path object
-    cfg.input_path = cfg.base_path / "input"
-    cfg.output_path = cfg.base_path / "output"
-    cfg.dataset_path = cfg.base_path / "dataset"
+    cfg.BASE_PATH = Path(cfg.BASE_PATH)  # Convert to Path object
+    cfg.INPUT_PATH = cfg.BASE_PATH / "input"
+    cfg.OUTPUT_PATH = cfg.BASE_PATH / "output"
+    cfg.DATASET_PATH = cfg.BASE_PATH / "dataset"
 
-    cfg.output_exp_path = cfg.output_path / cfg.exp
-    cfg.exp_model_path = cfg.output_exp_path / "model"
-    cfg.exp_preds_path = cfg.output_exp_path / "preds"
+    cfg.OUTPUT_EXP_PATH = cfg.OUTPUT_PATH / cfg.EXP
+    cfg.OUTPUT_EXP_MODEL_PATH = cfg.OUTPUT_EXP_PATH / "model"
+    cfg.OUTPUT_EXP_PREDS_PATH = cfg.OUTPUT_EXP_PATH / "preds"
 
-    cfg.log_path = cfg.base_path / "output/log"
+    cfg.log_path = cfg.BASE_PATH / "output/log"
     if not cfg.log_path.is_dir():
         cfg.log_path.mkdir(parents=True)
 
     # make dirs
-    for d in [cfg.input_path, cfg.exp_model_path, cfg.exp_preds_path, cfg.log_path]:
+    for d in [cfg.INPUT_PATH, cfg.OUTPUT_EXP_MODEL_PATH, cfg.OUTPUT_EXP_PREDS_PATH, cfg.log_path]:
         d.mkdir(parents=True, exist_ok=True)
 
-    if len(list(cfg.input_path.iterdir())) == 0:
+    if len(list(cfg.INPUT_PATH.iterdir())) == 0:
         # load dataset
         subprocess.run(
-            f"kaggle competitions download -c {cfg.competition} -p {cfg.input_path}",
+            f"kaggle competitions download -c {cfg.COMPETITION} -p {cfg.INPUT_PATH}",
             shell=True,
         )
-        filepath = cfg.input_path / (cfg.competition + ".zip")
-        subprocess.run(f"unzip -d {cfg.input_path} {filepath}", shell=True)
+        filepath = cfg.INPUT_PATH / (cfg.COMPETITION + ".zip")
+        subprocess.run(f"unzip -d {cfg.INPUT_PATH} {filepath}", shell=True)
 
     seed_everything(cfg.seed)
     return cfg
@@ -189,5 +233,8 @@ def seed_everything(seed=42):
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+        torch.use_deterministic_algorithms(True)
     except:
         pass

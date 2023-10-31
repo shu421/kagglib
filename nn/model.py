@@ -17,6 +17,16 @@ def freeze(module):
         parameter.requires_grad = False
 
 
+def get_n_params(model):
+    """get the number of parameters of a model"""
+    params = 0
+    for p in model.parameters():
+        if p.requires_grad:
+            params += p.numel()
+    return params
+
+
+
 class AttentionPooling(nn.Module):
     """
     Usage:
@@ -138,6 +148,38 @@ class WeightedLayerPooling(nn.Module):
         ) / self.layer_weights.sum()
 
         return weighted_average
+
+
+class LSTMPooling(nn.Module):
+    """
+    Usage:
+        self.pool = LSTMPooling(self.config.hidden_size)
+    """
+
+    def __init__(self, in_dim):
+        super().__init__()
+        self.lstm = nn.LSTM(in_dim, in_dim, batch_first=True)
+        self._init_weights(self.lstm)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.Embedding):
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            if module.padding_idx is not None:
+                module.weight.data[module.padding_idx].zero_()
+        elif isinstance(module, nn.LayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
+
+    def forward(self, last_hidden_state, attention_mask):
+        last_hidden_state = last_hidden_state.float()
+        last_hidden_state = last_hidden_state * attention_mask.unsqueeze(-1)
+        last_hidden_state = self.lstm(last_hidden_state)[0]
+        last_hidden_state = last_hidden_state[:, -1, :]
+        return last_hidden_state
 
 
 class Mixout(InplaceFunction):
